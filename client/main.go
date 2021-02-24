@@ -27,6 +27,9 @@ func main() {
 
 	fmt.Println(">>>>>>>>>> 连接服务器成功...")
 
+	//显示server发来的消息
+	go client.DealResponse()
+
 	//启动客户单的业务
 	client.Run()
 }

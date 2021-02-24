@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net"
+	"os"
 )
 
 type Client struct {
@@ -11,6 +13,18 @@ type Client struct {
 	Name       string
 	conn       net.Conn
 	flag       int //当前菜单选择
+}
+
+//处理Server返回的消息，直接显示
+func (client *Client) DealResponse() {
+	//一旦有数据，直接拷贝到标准输出
+	io.Copy(os.Stdout, client.conn)
+	//等价于
+	//for true {
+	//	buf := make()
+	//	client.conn.Read(buf)
+	//	fmt.Println(string(buf))
+	//}
 }
 
 func (client *Client) Run() {
@@ -29,11 +43,25 @@ func (client *Client) Run() {
 			break
 		case 3:
 			//更改同户名
-			fmt.Println("更新用户名选择...")
+			client.UpdateName()
 			break
 
 		}
 	}
+}
+
+func (client *Client) UpdateName() bool  {
+	fmt.Println(">>>>>>>请输入用户名:")
+	fmt.Scanln(&client.Name)
+
+	sendMsg := "rename=" + client.Name
+	_, err := client.conn.Write([]byte(sendMsg))
+	if err != nil {
+		fmt.Println("conn.Write err : ", err)
+		return false
+	}
+	return true
+
 }
 
 func (client *Client) menu() bool {
