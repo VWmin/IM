@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"runtime"
 	"sync"
+	"time"
 )
 
 type Server struct {
@@ -32,9 +34,9 @@ func NewServer(ip string, port int) *Server {
 //监听Message Channel广播消息的goroutine，一旦有消息，就发送给全部的在线用户
 func (server *Server) ListenMessageChan() {
 	for true {
-		msg := <- server.MessageChan
+		msg := <-server.MessageChan
 		server.mapLock.Lock()
-		for _, user := range server.OnlineMap{
+		for _, user := range server.OnlineMap {
 			user.Chan <- msg
 		}
 		server.mapLock.Unlock()
@@ -56,6 +58,9 @@ func (server *Server) Handler(conn net.Conn) {
 
 	user.Online()
 
+	//监听用户是否活跃的channel
+	isLive := make(chan bool)
+
 	//接收客户端发送的消息
 	go func() {
 		buf := make([]byte, 4096)
@@ -66,7 +71,7 @@ func (server *Server) Handler(conn net.Conn) {
 				return
 			}
 
-			if err != nil && err != io.EOF{
+			if err != nil && err != io.EOF {
 				fmt.Printf("conn read err : %v\n", err)
 				return
 			}
@@ -76,12 +81,31 @@ func (server *Server) Handler(conn net.Conn) {
 
 			//用户针对msg进行处理
 			user.OnMessage(msg)
+
+			//用户的任意消息代表当前用户活跃
+			isLive <- true
 		}
 
 	}()
 
 	//当前handler阻塞，如果该方法结束，goroutine结束
-	//select {}
+	for true {
+		select {
+		case <-isLive:
+			//当前用户活跃，应该重置触发器
+			//不做操作，顺序实行下条
+		case <-time.After(time.Second * 10):
+			//已经超时，将当前用户强制关闭
+			user.SendMessage("你被踢了")
+
+			//销毁用户的资源
+			close(user.Chan)
+			//关闭连接
+			conn.Close()
+			//退出当前的Handler
+			runtime.Goexit() //return
+		}
+	}
 }
 
 //启动服务器的方法 启动一个socket监听在ip:port
