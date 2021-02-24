@@ -7,10 +7,13 @@ type User struct {
 	Addr string
 	Chan chan string
 	conn net.Conn
+
+	//当前用户所属的Server
+	server *Server
 }
 
 //创建一个用户
-func NewUser(conn net.Conn) *User {
+func NewUser(conn net.Conn, server *Server) *User {
 	userAddr := conn.RemoteAddr().String()
 
 	user := &User{
@@ -18,6 +21,7 @@ func NewUser(conn net.Conn) *User {
 		Addr: userAddr,
 		Chan: make(chan string),
 		conn: conn,
+		server: server,
 	}
 
 	//启动监听当前user channel的goroutine
@@ -32,4 +36,31 @@ func (user *User) ListenMessage() {
 		msg := <- user.Chan
 		user.conn.Write([]byte(msg + "\n"))
 	}
+}
+
+// 用户上线业务
+func (user *User) Online() {
+	//用户上线，加入map
+	user.server.mapLock.Lock()
+	user.server.OnlineMap[user.Name] = user
+	user.server.mapLock.Unlock()
+
+	//广播用户上线
+	user.server.BroadCast(user, "已上线")
+}
+
+//用户下线业务
+func (user *User) Offline() {
+	//用户下线，从map除去
+	user.server.mapLock.Lock()
+	delete(user.server.OnlineMap, user.Name)
+	user.server.mapLock.Unlock()
+
+	//广播用户下线
+	user.server.BroadCast(user, "下线")
+}
+
+//用户处理消息的业务
+func (user *User) OnMessage(msg string){
+	user.server.BroadCast(user, msg)
 }
