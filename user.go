@@ -60,7 +60,21 @@ func (user *User) Offline() {
 	user.server.BroadCast(user, "下线")
 }
 
-//用户处理消息的业务
+//发送消息到当前用户所在客户端
+func (user *User) SendMessage(msg string) {
+	user.conn.Write([]byte(msg))
+}
+
+//处理用户消息的业务，不是这个用户收到的消息，而是他发出的消息
 func (user *User) OnMessage(msg string){
-	user.server.BroadCast(user, msg)
+	if msg == "who" {
+		user.server.mapLock.Lock()
+		for _, onlineUser := range user.server.OnlineMap {
+			onlineMsg := "[" + onlineUser.Addr + "]" + onlineUser.Name + ":" + "在线...\n"
+			user.SendMessage(onlineMsg)
+		}
+		user.server.mapLock.Unlock()
+	}else{
+		user.server.BroadCast(user, msg)
+	}
 }
