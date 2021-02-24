@@ -94,7 +94,7 @@ func (server *Server) Handler(conn net.Conn) {
 		case <-isLive:
 			//当前用户活跃，应该重置触发器
 			//不做操作，顺序实行下条
-		case <-time.After(time.Second * 10):
+		case <-time.After(time.Minute * 15):
 			//已经超时，将当前用户强制关闭
 			user.SendMessage("你被踢了")
 
