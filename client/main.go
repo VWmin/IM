@@ -1,9 +1,25 @@
 package main
 
-import "fmt"
+import (
+	"flag"
+	"fmt"
+)
+
+var serverIp string
+var serverPort int
+
+// 命令行解析
+func init() {
+	//绑定到变量，参数名，默认值，说明
+	flag.StringVar(&serverIp, "ip", "127.0.0.1", "设置服务器IP地址")
+	flag.IntVar(&serverPort, "port", 8888, "指定端口号")
+}
 
 func main() {
-	client := NewClient("127.0.0.1", 8888)
+	//命令行解析
+	flag.Parse()
+
+	client := NewClient(serverIp, serverPort)
 	if client == nil {
 		fmt.Println(">>>>>>>>>>> 连接服务器失败...")
 		return
